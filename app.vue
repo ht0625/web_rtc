@@ -3,13 +3,14 @@
     <h2>ブラウザ間でのデータ送信</h2>
 
     <!-- オファー側SDPの表示領域 -->
-    <textarea v-model="offerSDP" placeholder="ここにオファー側SDPを生成または貼り付け"></textarea>
+    <!-- <textarea v-model="offerSDP" placeholder="ここにオファー側SDPを生成または貼り付け"></textarea> -->
     <button @click="createOffer">オファーSDP作成</button>
-    <button @click="setOffer">オファーSDP設定</button>
+    <!-- <button @click="setOffer">オファーSDP設定</button> -->
     <!-- アンサー側SDPの表示領域 -->
-    <textarea v-model="answerSDP" placeholder="ここにアンサー側SDPを生成または貼り付け"></textarea>
+    <!-- <textarea v-model="answerSDP" placeholder="ここにアンサー側SDPを生成または貼り付け"></textarea> -->
     <button @click="createAnswer">アンサーSDP作成</button>
-    <button @click="setAnswer">アンサーSDP設定</button>
+    <!-- <button @click="setAnswer">アンサーSDP設定</button> -->
+    <video ref="video" width="300" height="200" autoplay muted></video>
     <hr>
     <!-- オファーQRコード表示 -->
     <h3>QRコード（オファーSDP+ICE）</h3>
@@ -18,10 +19,9 @@
     </div>
 
     <!-- QRコード読み取り -->
-    <h3>QRコードスキャン</h3>
-    <video ref="video" width="300" height="200" autoplay muted></video>
+    <!-- <h3>QRコードスキャン</h3> -->
     <br>
-    <button @click="startQrScanner">QRコードスキャン開始</button>
+    <button @click="startQrScanner">アンサー側QRコードスキャン開始</button>
     <p v-if="scannedData">スキャン結果: {{ scannedData }}</p>
     <hr>
     <!-- オファーQRコード表示 -->
@@ -31,21 +31,21 @@
     </div>
 
     <!-- QRコード読み取り -->
-    <h3>QRコードスキャン</h3>
-    <video ref="video" width="300" height="200" autoplay muted></video>
+    <!-- <h3>QRコードスキャン</h3> -->
+    <!-- <video ref="video" width="300" height="200" autoplay muted></video> -->
     <br>
-    <button @click="startQrScannerAnswer">QRコードスキャン開始</button>
+    <button @click="startQrScannerAnswer">オファー側QRコードスキャン開始</button>
     <p v-if="scannedDataAnswer">スキャン結果: {{ scannedDataAnswer }}</p>
     <hr>
     <!-- オファー側ICE候補の表示領域 -->
-    <h3>オファー側のICE候補</h3>
+    <!-- <h3>オファー側のICE候補</h3>
     <textarea v-model="offerIceCandidates" placeholder="ここにオファー側のICE候補を貼り付け"></textarea>
-    <button @click="addIceCandidatesOffer">オファーのICE候補設定</button>
+    <button @click="addIceCandidatesOffer">オファーのICE候補設定</button> -->
 
     <!-- アンサー側ICE候補の表示領域 -->
-    <h3>アンサー側のICE候補</h3>
+    <!-- <h3>アンサー側のICE候補</h3>
     <textarea v-model="answerIceCandidates" placeholder="ここにアンサー側のICE候補を貼り付け"></textarea>
-    <button @click="addIceCandidatesAnswer">アンサー側のICE候補設定</button>
+    <button @click="addIceCandidatesAnswer">アンサー側のICE候補設定</button> -->
 
     <br><br>
 
@@ -128,7 +128,7 @@ const createOffer = async () => {
       console.log('ICE候補収集が完了しました');
       const data = {
         offerSDP: offerSDP.value,
-        offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean).splice(0,1),
+        offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean).slice(0,1)
       };
       console.log('生成するQRコードデータ:', data);
       qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
@@ -221,7 +221,7 @@ const createAnswer = async () => {
       console.log('ICE候補収集が完了しました');
       const data = {
         answerSDP: answerSDP.value,
-        answerIceCandidates: answerIceCandidates.value.split('\n').filter(Boolean).splice(0,1),
+        answerIceCandidates: answerIceCandidates.value.split('\n').filter(Boolean).slice(0,1),
       };
       console.log('生成するQRコードデータ:', data);
       qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
