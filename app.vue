@@ -6,12 +6,23 @@
     <textarea v-model="offerSDP" placeholder="ここにオファー側SDPを生成または貼り付け"></textarea>
     <button @click="createOffer">オファーSDP作成</button>
     <button @click="setOffer">オファーSDP設定</button>
-
     <!-- アンサー側SDPの表示領域 -->
     <textarea v-model="answerSDP" placeholder="ここにアンサー側SDPを生成または貼り付け"></textarea>
     <button @click="createAnswer">アンサーSDP作成</button>
     <button @click="setAnswer">アンサーSDP設定</button>
 
+    <!-- オファーQRコード表示 -->
+    <h3>QRコード（オファーSDP+ICE）</h3>
+    <div v-if="qrCodeData">
+      <img :src="qrCodeData" alt="オファーQRコード" />
+    </div>
+
+    <!-- QRコード読み取り -->
+    <h3>QRコードスキャン</h3>
+    <video ref="video" width="300" height="200" autoplay muted></video>
+    <br>
+    <button @click="startQrScanner">QRコードスキャン開始</button>
+    <p v-if="scannedData">スキャン結果: {{ scannedData }}</p>
     <!-- オファー側ICE候補の表示領域 -->
     <h3>オファー側のICE候補</h3>
     <textarea v-model="offerIceCandidates" placeholder="ここにオファー側のICE候補を貼り付け"></textarea>
@@ -21,6 +32,8 @@
     <h3>アンサー側のICE候補</h3>
     <textarea v-model="answerIceCandidates" placeholder="ここにアンサー側のICE候補を貼り付け"></textarea>
     <button @click="addIceCandidatesAnswer">アンサー側のICE候補設定</button>
+
+    <br><br>
 
     <!-- データ送信用のUI -->
     <input v-model="message" type="text" placeholder="送信するメッセージ" />
@@ -35,7 +48,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
+import QRCode from 'qrcode';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 // 変数定義
 const offerSDP = ref('');
@@ -44,6 +59,9 @@ const offerIceCandidates = ref('');
 const answerIceCandidates = ref('');
 const message = ref('');
 const messages = ref<string[]>([]);
+const qrCodeData = ref<string | null>(null);
+const scannedData = ref<string | null>(null);
+const video = ref<HTMLVideoElement | null>(null);
 
 let offerConnection: RTCPeerConnection | null = null;
 let answerConnection: RTCPeerConnection | null = null;
@@ -51,6 +69,7 @@ let offerSendChannel: RTCDataChannel | null = null;
 let answerSendChannel: RTCDataChannel | null = null;
 let offerReceiveChannel: RTCDataChannel | null = null;
 let answerReceiveChannel: RTCDataChannel | null = null;
+let qrCodeReader: BrowserMultiFormatReader | null = null;
 
 // メッセージ表示関数
 const displayMessage = (msg: string) => {
@@ -80,6 +99,14 @@ const createOffer = async () => {
       offerIceCandidates.value += JSON.stringify(event.candidate) + '\n';
     }
   };
+  setInterval(async ()=>{
+      const data = {
+      offerSDP: offerSDP.value,
+      offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean),
+    };
+    qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
+  },3000)
+
 };
 
 // オファーSDP設定
@@ -96,6 +123,27 @@ const setOffer = async () => {
   await answerConnection.setRemoteDescription(offer);
   console.log('オファーが設定されました。');
 };
+// QRコードスキャン開始
+const startQrScanner = async () => {
+  if (!video.value) return;
+
+  qrCodeReader = new BrowserMultiFormatReader();
+  try {
+    const result = await qrCodeReader.decodeOnceFromVideoDevice(undefined, video.value);
+    scannedData.value = result.getText();
+    if (scannedData.value) {
+      const parsedData = JSON.parse(scannedData.value);
+      offerSDP.value = parsedData.offerSDP;
+      offerIceCandidates.value = parsedData.offerIceCandidates.join('\n');
+    } else {
+      console.error('スキャンデータが null です');
+    }
+    
+  } catch (err) {
+    console.error('QRコードスキャンエラー:', err);
+  }
+};
+
 
 // アンサーSDP作成
 const createAnswer = async () => {
@@ -163,4 +211,16 @@ const sendMessageAnswer = () => {
     message.value = '';
   }
 };
+
+// クリーンアップ
+onUnmounted(async () => {
+  // カメラストリームを明示的に停止
+  const videoElement = video.value;
+  if (videoElement && videoElement.srcObject) {
+    const stream = videoElement.srcObject as MediaStream;
+    stream.getTracks().forEach((track) => track.stop());
+    videoElement.srcObject = null; // リソースを解放
+  }
+});
+
 </script>
