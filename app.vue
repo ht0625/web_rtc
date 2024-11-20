@@ -78,6 +78,9 @@ const displayMessage = (msg: string) => {
 
 // オファーSDP作成
 const createOffer = async () => {
+  offerIceCandidates.value = ''; // ICE候補をリセット
+  qrCodeData.value = null; // 古いQRコードデータをリセット
+  
   offerConnection = new RTCPeerConnection({
     iceServers: [], // STUN/TURNサーバーを指定しない
     iceTransportPolicy: "all", // Host候補も含める（デフォルト値）
@@ -102,15 +105,21 @@ const createOffer = async () => {
       offerIceCandidates.value += JSON.stringify(event.candidate) + '\n';
     }
   };
-  setTimeout(async ()=>{
-      const data = {
-      offerSDP: offerSDP.value,
-      offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean).slice(0, 1),
-    };
-    qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
-  },3000)
 
+  // ICE候補収集完了を検知
+  offerConnection.onicegatheringstatechange = async () => {
+    if (offerConnection != null && offerConnection.iceGatheringState === 'complete') {
+      console.log('ICE候補収集が完了しました');
+      const data = {
+        offerSDP: offerSDP.value,
+        offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean),
+      };
+      console.log('生成するQRコードデータ:', data);
+      qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
+    }
+  };
 };
+
 
 // オファーSDP設定
 const setOffer = async () => {
