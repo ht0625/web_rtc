@@ -112,7 +112,7 @@ const createOffer = async () => {
       console.log('ICE候補収集が完了しました');
       const data = {
         offerSDP: offerSDP.value,
-        offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean),
+        offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean).splice(0,1),
       };
       console.log('生成するQRコードデータ:', data);
       qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
