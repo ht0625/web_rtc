@@ -10,7 +10,7 @@
     <textarea v-model="answerSDP" placeholder="ここにアンサー側SDPを生成または貼り付け"></textarea>
     <button @click="createAnswer">アンサーSDP作成</button>
     <button @click="setAnswer">アンサーSDP設定</button>
-
+    <hr>
     <!-- オファーQRコード表示 -->
     <h3>QRコード（オファーSDP+ICE）</h3>
     <div v-if="qrCodeData">
@@ -23,6 +23,20 @@
     <br>
     <button @click="startQrScanner">QRコードスキャン開始</button>
     <p v-if="scannedData">スキャン結果: {{ scannedData }}</p>
+    <hr>
+    <!-- オファーQRコード表示 -->
+    <h3>QRコード（オファーSDP+ICE）</h3>
+    <div v-if="qrCodeDataAnswer">
+      <img :src="qrCodeDataAnswer" alt="アンサーQRコード" />
+    </div>
+
+    <!-- QRコード読み取り -->
+    <h3>QRコードスキャン</h3>
+    <video ref="video" width="300" height="200" autoplay muted></video>
+    <br>
+    <button @click="startQrScannerAnswer">QRコードスキャン開始</button>
+    <p v-if="scannedDataAnswer">スキャン結果: {{ scannedDataAnswer }}</p>
+    <hr>
     <!-- オファー側ICE候補の表示領域 -->
     <h3>オファー側のICE候補</h3>
     <textarea v-model="offerIceCandidates" placeholder="ここにオファー側のICE候補を貼り付け"></textarea>
@@ -60,7 +74,9 @@ const answerIceCandidates = ref('');
 const message = ref('');
 const messages = ref<string[]>([]);
 const qrCodeData = ref<string | null>(null);
+const qrCodeDataAnswer = ref<string | null>(null);
 const scannedData = ref<string | null>(null);
+const scannedDataAnswer = ref<string | null>(null);
 const video = ref<HTMLVideoElement | null>(null);
 
 let offerConnection: RTCPeerConnection | null = null;
@@ -158,6 +174,28 @@ const startQrScanner = async () => {
   }
 };
 
+const startQrScannerAnswer = async () => {
+  if (!video.value) return;
+
+  qrCodeReader = new BrowserMultiFormatReader();
+  try {
+    const result = await qrCodeReader.decodeOnceFromVideoDevice(undefined, video.value);
+    scannedData.value = result.getText();
+    if (scannedData.value) {
+      const parsedData = JSON.parse(scannedData.value);
+      answerSDP.value = parsedData.answerSDP;
+      answerIceCandidates.value = parsedData.answerIceCandidates.join('\n');
+      await setAnswer()
+      addIceCandidatesAnswer()
+    } else {
+      console.error('スキャンデータが null です');
+    }
+    
+  } catch (err) {
+    console.error('QRコードスキャンエラー:', err);
+  }
+};
+
 
 // アンサーSDP作成
 const createAnswer = async () => {
@@ -176,6 +214,19 @@ const createAnswer = async () => {
   answerSendChannel = answerConnection.createDataChannel('answerSendChannel');
   answerSendChannel.onopen = () => console.log('アンサー側データチャンネルがオープンしました');
   answerSendChannel.onclose = () => console.log('アンサー側データチャンネルがクローズしました');
+
+  // ICE候補収集完了を検知
+  answerConnection.onicegatheringstatechange = async () => {
+    if (answerConnection != null && answerConnection.iceGatheringState === 'complete') {
+      console.log('ICE候補収集が完了しました');
+      const data = {
+        answerSDP: answerSDP.value,
+        answerIceCandidates: answerIceCandidates.value.split('\n').filter(Boolean).splice(0,1),
+      };
+      console.log('生成するQRコードデータ:', data);
+      qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
+    }
+  };
 };
 
 // アンサーSDP設定
