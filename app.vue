@@ -78,7 +78,10 @@ const displayMessage = (msg: string) => {
 
 // オファーSDP作成
 const createOffer = async () => {
-  offerConnection = new RTCPeerConnection();
+  offerConnection = new RTCPeerConnection({
+    iceServers: [], // STUN/TURNサーバーを指定しない
+    iceTransportPolicy: "all", // Host候補も含める（デフォルト値）
+  });
 
   offerSendChannel = offerConnection.createDataChannel('offerSendChannel');
   offerSendChannel.onopen = () => console.log('オファー側データチャンネルがオープンしました');
@@ -99,10 +102,10 @@ const createOffer = async () => {
       offerIceCandidates.value += JSON.stringify(event.candidate) + '\n';
     }
   };
-  setInterval(async ()=>{
+  setTimeout(async ()=>{
       const data = {
       offerSDP: offerSDP.value,
-      offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean),
+      offerIceCandidates: offerIceCandidates.value.split('\n').filter(Boolean).slice(0, 1),
     };
     qrCodeData.value = await QRCode.toDataURL(JSON.stringify(data));
   },3000)
@@ -135,6 +138,8 @@ const startQrScanner = async () => {
       const parsedData = JSON.parse(scannedData.value);
       offerSDP.value = parsedData.offerSDP;
       offerIceCandidates.value = parsedData.offerIceCandidates.join('\n');
+      await setOffer()
+      addIceCandidatesOffer()
     } else {
       console.error('スキャンデータが null です');
     }
@@ -181,6 +186,7 @@ const addIceCandidatesOffer = () => {
     if(answerConnection != null){
       answerConnection.addIceCandidate(candidate).catch((err) => console.error('ICE候補追加エラー:', err));
     }
+    console.log('オファーICE候補が設定されました。');
   });
 };
 
@@ -192,6 +198,7 @@ const addIceCandidatesAnswer = () => {
     if(offerConnection != null){
       offerConnection.addIceCandidate(candidate).catch((err) => console.error('ICE候補追加エラー:', err));
     }
+    console.log('アンサーICE候補が設定されました。');
   });
 };
 
