@@ -1,5 +1,6 @@
 <template>
   <div>
+    <nuxt-link v-bind:to="{name:'chat'}">chat画面遷移テスト</nuxt-link>
     <h2>ブラウザ間でのデータ送信</h2>
 
     <!-- オファー側SDPの表示領域 -->
@@ -66,6 +67,9 @@ import { ref, onUnmounted } from 'vue';
 import QRCode from 'qrcode';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 
+import { useWebRTCStore } from '~/store/webrtc';
+
+const webrtcStore = useWebRTCStore();
 
 
 // 変数定義
@@ -83,10 +87,10 @@ const video = ref<HTMLVideoElement | null>(null);
 
 let offerConnection: RTCPeerConnection | null = null;
 let answerConnection: RTCPeerConnection | null = null;
-let offerSendChannel: RTCDataChannel | null = null;
-let answerSendChannel: RTCDataChannel | null = null;
-let offerReceiveChannel: RTCDataChannel | null = null;
-let answerReceiveChannel: RTCDataChannel | null = null;
+// let offerSendChannel: RTCDataChannel | null = null;
+// let answerSendChannel: RTCDataChannel | null = null;
+// let offerReceiveChannel: RTCDataChannel | null = null;
+// let answerReceiveChannel: RTCDataChannel | null = null;
 let qrCodeReader: BrowserMultiFormatReader | null = null;
 
 // メッセージ表示関数
@@ -104,13 +108,15 @@ const createOffer = async () => {
     iceTransportPolicy: "all", // Host候補も含める（デフォルト値）
   });
 
-  offerSendChannel = offerConnection.createDataChannel('offerSendChannel');
+  let offerSendChannel = offerConnection.createDataChannel('offerSendChannel');
   offerSendChannel.onopen = () => console.log('オファー側データチャンネルがオープンしました');
   offerSendChannel.onclose = () => console.log('オファー側データチャンネルがクローズしました');
+  webrtcStore.setOfferSendChannel(offerSendChannel);
 
   offerConnection.ondatachannel = (event) => {
-    offerReceiveChannel = event.channel;
-    offerReceiveChannel.onmessage = (e) => displayMessage(`受信: ${e.data}`);
+    let offerReceiveChannel = event.channel;
+    // offerReceiveChannel.onmessage = (e) => displayMessage(`受信: ${e.data}`);
+    webrtcStore.setOfferReceiveChannel(offerReceiveChannel);
   };
 
   const offer = await offerConnection.createOffer();
@@ -146,8 +152,9 @@ const setOffer = async () => {
   answerConnection = new RTCPeerConnection();
 
   answerConnection.ondatachannel = (event) => {
-    answerReceiveChannel = event.channel;
-    answerReceiveChannel.onmessage = (e) => displayMessage(`受信: ${e.data}`);
+    let answerReceiveChannel = event.channel;
+    // answerReceiveChannel.onmessage = (e) => displayMessage(`受信: ${e.data}`);
+    webrtcStore.setOfferReceiveChannel(answerReceiveChannel);
   };
 
   await answerConnection.setRemoteDescription(offer);
@@ -213,9 +220,10 @@ const createAnswer = async () => {
     }
   };
 
-  answerSendChannel = answerConnection.createDataChannel('answerSendChannel');
+  let answerSendChannel = answerConnection.createDataChannel('answerSendChannel');
   answerSendChannel.onopen = () => console.log('アンサー側データチャンネルがオープンしました');
   answerSendChannel.onclose = () => console.log('アンサー側データチャンネルがクローズしました');
+  webrtcStore.setAnswerSendChannel(answerSendChannel);
 
   // ICE候補収集完了を検知
   answerConnection.onicegatheringstatechange = async () => {
@@ -266,16 +274,16 @@ const addIceCandidatesAnswer = () => {
 
 // メッセージ送信
 const sendMessageOffer = () => {
-  if (offerSendChannel && offerSendChannel.readyState === 'open') {
-    offerSendChannel.send(message.value);
+  if (webrtcStore.offerSendChannel && webrtcStore.offerSendChannel.readyState === 'open') {
+    webrtcStore.offerSendChannel.send(message.value);
     displayMessage(`送信: ${message.value}`);
     message.value = '';
   }
 };
 
 const sendMessageAnswer = () => {
-  if (answerSendChannel && answerSendChannel.readyState === 'open') {
-    answerSendChannel.send(message.value);
+  if (webrtcStore.answerSendChannel && webrtcStore.answerSendChannel.readyState === 'open') {
+    webrtcStore.answerSendChannel.send(message.value);
     displayMessage(`送信: ${message.value}`);
     message.value = '';
   }
