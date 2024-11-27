@@ -10,9 +10,11 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@pinia/nuxt": "^0.7.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "nuxt": "^3.14.159",
+    "pinia": "^2.2.6",
     "qrcode": "^1.5.4",
     "vue": "latest",
     "vue-router": "latest"
